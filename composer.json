@@ -1,0 +1,38 @@
+{
+    "name": "huettig-und-rompf/webhub-proxy",
+    "description": "A proxy script to include the Hüttig & Rompf Webhub Snippets on your website in complete privacy",
+    "type": "library",
+    "license": "Apache-2.0",
+    "authors": [
+        {
+            "name": "Huettig & Rompf",
+            "email": "marketing@huettig-rompf.de",
+            "homepage": "https://www.huettig-rompf.de",
+            "role": "Company"
+        },
+        {
+            "name": "LABOR.digital",
+            "email": "info@labor.tools",
+            "homepage": "https://www.labor.digital",
+            "role": "Company"
+        },
+        {
+            "name": "Martin Neundorfer",
+            "email": "code@neunerlei.eu",
+            "homepage": "https://www.neunerlei.eu",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "middlewares/proxy": "^1.1",
+        "laminas/laminas-diactoros": "^2.3",
+        "laminas/laminas-stratigility": "^3.2",
+        "laminas/laminas-httphandlerrunner": "^1.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "HuR\\WebhubProxy\\": "Classes"
+        }
+    },
+    "version": "1.0.0"
+}

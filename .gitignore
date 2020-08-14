@@ -1,0 +1,5 @@
+vendor/
+.settings/
+.env
+.unison*
+perms*.set
