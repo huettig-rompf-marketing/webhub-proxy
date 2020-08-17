@@ -9,6 +9,7 @@ Therefore, you are safe to use the snippets/calculators without additional "opt-
 - PHP >=7.2
 - PHP gzip
 - Apache Webserver with mod-rewrite enabled
+- or nginx with [additional configuration](#nginx-configuration)
 
 ## Installation
 Install this package using Composer:
@@ -33,3 +34,15 @@ After you installed the bundle:
   e.g ```<script type="text/javascript" src="https://webhub.huettig-rompf.de/js/snippet"></script>```
   becomes: ```<script type="text/javascript" src="https://example.org/webhub-proxy/js/snippet"></script>```
 
+## Nginx Configuration
+If you are running your websites with nginx instead of apache,
+edit your configuration file to include this location directive:
+
+```
+server {
+    server_name example.com;
+    location /webhub-proxy {
+        try_files $uri $uri/ index.php$is_args$args;
+    }
+}
+```
