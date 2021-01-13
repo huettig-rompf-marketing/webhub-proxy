@@ -38,11 +38,22 @@ After you installed the bundle:
 If you are running your websites with nginx instead of apache,
 edit your configuration file to include this location directive:
 
+**Option A: Inside a sub-directory**
 ```
 server {
     server_name example.com;
     location /webhub-proxy {
-        try_files $uri $uri/ index.php$is_args$args;
+       try_files $uri $uri/ /webhub-proxy/index.php?$query_string;
+    }
+}
+```
+
+**Option B: Using a separarte URL**
+```
+server {
+    server_name webhub-proxy.example.com;
+    location / {
+       try_files $uri $uri/ /index.php?$query_string;
     }
 }
 ```
