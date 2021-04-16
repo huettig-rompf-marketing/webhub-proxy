@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.2.1](https://github.com/huettig-rompf-marketing/webhub-proxy/compare/v1.2.0...v1.2.1) (2021-04-16)
+
+
+### Bug Fixes
+
+* add guzzle proxy polyfill for multipart forms ([90feb48](https://github.com/huettig-rompf-marketing/webhub-proxy/commit/90feb486f69bd9a9f918369f37d68ec9c92163ba))
+
 ## [1.2.0](https://github.com/huettig-rompf-marketing/webhub-proxy/compare/v1.1.2...v1.2.0) (2021-01-26)
 
 
