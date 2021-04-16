@@ -23,6 +23,7 @@ declare(strict_types=1);
 namespace HuR\WebhubProxy;
 
 
+use GuzzleHttp\Psr7\Response;
 use HuR\WebhubProxy\Middleware\HeaderAdjustmentMiddleware;
 use HuR\WebhubProxy\Middleware\JsBasePathMiddleware;
 use HuR\WebhubProxy\Middleware\PathResolverMiddleware;
@@ -34,9 +35,14 @@ use Laminas\HttpHandlerRunner\Emitter\SapiEmitter;
 use Laminas\HttpHandlerRunner\RequestHandlerRunner;
 use Laminas\Stratigility\MiddlewarePipe;
 use Middlewares\Proxy as ProxyMiddleware;
+use MongoDB\Driver\Server;
+use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 use Throwable;
+use function GuzzleHttp\Psr7\stream_for;
+use function GuzzleHttp\Psr7\try_fopen;
 
 class Proxy
 {
@@ -79,7 +85,7 @@ class Proxy
     public function __construct(string $rootDir, ?string $targetUrl = null)
     {
         $this->rootDir = $rootDir;
-        if ($targetUrl !== null) {
+        if (!empty($targetUrl)) {
             $this->targetUrl = $targetUrl;
         }
     }
@@ -141,6 +147,7 @@ class Proxy
         foreach ($this->additionalMiddlewares as $additionalMiddleware) {
             $app->pipe($additionalMiddleware);
         }
+        $app->pipe($this->makeGuzzleMultipartPolyfillMiddleware($this->concreteProxy));
         $app->pipe($this->concreteProxy);
 
         // Dispatch the messaging pipeline
@@ -161,5 +168,101 @@ class Proxy
             }
         );
         $server->run();
+    }
+
+    /**
+     * Creates a new middleware instance which automatically converts a multipart request
+     * to be handled correctly by the guzzle proxy client
+     * @param   \Middlewares\Proxy  $proxy
+     *
+     * @return \Psr\Http\Server\MiddlewareInterface
+     */
+    protected function makeGuzzleMultipartPolyfillMiddleware(ProxyMiddleware $proxy): MiddlewareInterface{
+        return new class($proxy) implements MiddlewareInterface{
+            protected $proxy;
+            public function __construct(ProxyMiddleware $proxy){
+                $this->proxy = $proxy;
+            }
+
+            public function process(
+                ServerRequestInterface $request,
+                RequestHandlerInterface $handler
+            ): ResponseInterface {
+
+                if($request->getMethod() === 'POST' &&
+                   is_array($request->getParsedBody()) &&
+                   stripos($request->getHeaderLine('Content-Type'), 'multipart') !== false
+                ){
+
+                    $this->proxy->options([
+                        'multipart' => $this->makeMultipartData(
+                            $request->getParsedBody(),
+                            $request->getUploadedFiles()
+                        )
+                    ]);
+
+                    /** @noinspection CallableParameterUseCaseInTypeContextInspection */
+                    $request = $request->withoutHeader('Content-Type');
+                }
+
+                return $handler->handle($request);
+            }
+
+            /**
+             * Builds the multipart data array based on the given, parsed body and uploaded files array
+             * @param   array  $body
+             * @param   array  $files
+             *
+             * @return array
+             */
+            protected function makeMultipartData(array $body, array $files): array{
+                $data = $this->flattenArray($body);
+                $fileData = $this->flattenArray($files);
+                $this->prepareFileArray($fileData);
+                return array_merge($data, $fileData);
+            }
+
+            /**
+             * Flattens an array to the correct multipart data format
+             * @param   array   $data
+             * @param   string  $prefix
+             *
+             * @return array
+             */
+            protected function flattenArray(array $data, string $prefix = ''): array{
+                $hasPrefix = $prefix !== '';
+                $flattened = [];
+                foreach ($data as $k => $v) {
+                    $key = $hasPrefix ? $prefix . '[' . $k . ']' : $k;
+                    if(is_array($v)){
+                        /** @noinspection SlowArrayOperationsInLoopInspection */
+                        $flattened = array_merge($flattened, $this->flattenArray($v, $key));
+                    } else {
+                        $flattened[] = [
+                            'name' => $key,
+                            'contents' => $v
+                        ];
+                    }
+                }
+                return $flattened;
+            }
+
+            /**
+             * Converts the uploaded file instance for guzzle
+             * @param   array  $files
+             */
+            protected function prepareFileArray(array &$files): void{
+
+                foreach ($files as &$item){
+                    /** @var \Laminas\Diactoros\UploadedFile $file */
+                    $file = $item['contents'];
+                    $item['filename'] = $file->getClientFilename();
+                    $item['contents'] = $file->getStream();
+                    $item['headers'] =[
+                        'Content-Type' => $file->getClientMediaType()
+                    ];
+                }
+            }
+        };
     }
 }
